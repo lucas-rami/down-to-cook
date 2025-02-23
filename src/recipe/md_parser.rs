@@ -178,3 +178,21 @@ pub fn get_text_from_paragraph<'a>(node: &'a Node) -> Result<&'a str, MDError> {
         Err(MDError::new("expected paragraph", Some(node)))
     }
 }
+
+pub mod tests {
+    macro_rules! assert_parse {
+        ( $res:expr ) => {
+            assert!($res.inspect_err(|e| print!("{}", e)).is_ok());
+        };
+    }
+
+    macro_rules! assert_parse_eq {
+        ( $res:expr, $val:expr ) => {
+            assert!($res.inspect_err(|e| print!("{}", e)).is_ok());
+            assert_eq!($res.unwrap(), $val);
+        };
+    }
+
+    pub(crate) use assert_parse;
+    pub(crate) use assert_parse_eq;
+}
