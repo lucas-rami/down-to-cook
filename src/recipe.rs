@@ -54,10 +54,6 @@ pub mod tests {
 
             ## Steps
         "};
-        print!(
-            "{:#?}",
-            markdown::to_mdast(content, &markdown::ParseOptions::default()).unwrap()
-        );
         assert_parse!(Recipe::from_mdast(content));
     }
 }

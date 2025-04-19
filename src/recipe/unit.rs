@@ -14,13 +14,17 @@ pub enum Unit {
     FluidOunce,
     Cup,
     Gallon,
-    // Distance,
+    // Distance
     Millimeter,
     Centimeter,
     Inches,
     // Temperature
     Celsius,
     Farenheit,
+    // Time
+    Second,
+    Minute,
+    Hour,
     // Unknown
     Custom(String),
 }
@@ -39,13 +43,23 @@ impl Unit {
             "tbsp" => Self::Tablespoon,
             "fl oz" | "fl. oz." => Self::FluidOunce,
             "cup" => Self::Cup,
-            "gal" => Self::Liter,
-            "°c" => Self::Celsius,
-            "°f" => Self::Farenheit,
+            "gal" => Self::Gallon,
             "mm" => Self::Millimeter,
             "cm" => Self::Centimeter,
             "in" => Self::Inches,
+            "°c" => Self::Celsius,
+            "°f" => Self::Farenheit,
+            "s" | "sec" | "sec." | "second" | "seconds" => Self::Second,
+            "min" | "min." | "minute" | "minutes" => Self::Minute,
+            "h" | "hour" => Self::Hour,
             _ => Self::Custom(text.to_string()),
+        }
+    }
+
+    pub fn is_time(&self) -> bool {
+        match &self {
+            Self::Second | Self::Minute | Self::Hour => true,
+            _ => false,
         }
     }
 
@@ -57,11 +71,12 @@ impl Unit {
             Self::Teaspoon => (Self::Milliliter, 5. * quantity),
             Self::Tablespoon => (Self::Milliliter, 15. * quantity),
             Self::Cup => (Self::Milliliter, 240. * quantity),
-            Self::FluidOunce => (Self::Milliliter, 29. * quantity), // halfway between US and UK conventions
+            // Halfway between US and UK conventions. For more precision, use a better unit.
+            Self::FluidOunce => (Self::Milliliter, 29. * quantity),
             Self::Gallon => (Self::Liter, 3.785 * quantity),
             Self::Farenheit => (Self::Celsius, (quantity - 32.) * 5. / 9.),
             Self::Inches => (Self::Centimeter, 2.5 * quantity),
-            // Already sanitized
+            // Already sanitized.
             _ => (self.clone(), quantity),
         }
     }

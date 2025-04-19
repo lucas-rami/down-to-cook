@@ -8,6 +8,8 @@ use std::{
     num::ParseFloatError,
 };
 
+use super::unit::Unit;
+
 #[derive(Debug)]
 pub struct MDError {
     msg: String,
@@ -119,9 +121,9 @@ pub fn expect_children(node: &Node, num: usize) -> Result<(), MDError> {
 }
 
 pub fn get_heading(node: &Node, depth: u8, name: Option<&str>) -> Result<String, MDError> {
-    // Check that the heading is what we expect
+    // Check that the heading is what we expect.
     if let Node::Heading(heading) = &node {
-        // We expect a single Node::Text children at the correct depth
+        // We expect a single Node::Text children at the correct depth.
         if heading.depth != depth {
             Err(MDError::new(
                 &format!(
@@ -176,6 +178,28 @@ pub fn get_text_from_paragraph<'a>(node: &'a Node) -> Result<&'a str, MDError> {
         }
     } else {
         Err(MDError::new("expected paragraph", Some(node)))
+    }
+}
+
+pub fn parse_quantity(txt: &str, allow_unitless: bool) -> Result<(f32, Option<Unit>), MDError> {
+    match txt.find(|c: char| c.is_alphabetic()) {
+        Some(idx) => {
+            let (quantity, unit) = txt.split_at(idx);
+            Ok((
+                quantity.trim().parse::<f32>()?,
+                Some(Unit::decode(unit.trim())),
+            ))
+        }
+        None => {
+            if allow_unitless {
+                Ok((txt.to_string().parse::<f32>()?, None))
+            } else {
+                Err(MDError::new(
+                    &format!("unitless quantity is not allowed, got '{}'", txt),
+                    None,
+                ))
+            }
+        }
     }
 }
 
