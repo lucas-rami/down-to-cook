@@ -8,8 +8,6 @@ use std::{
     num::ParseFloatError,
 };
 
-use super::unit::Unit;
-
 #[derive(Debug)]
 pub struct MDError {
     msg: String,
@@ -178,28 +176,6 @@ pub fn get_text_from_paragraph<'a>(node: &'a Node) -> Result<&'a str, MDError> {
         }
     } else {
         Err(MDError::new("expected paragraph", Some(node)))
-    }
-}
-
-pub fn parse_quantity(txt: &str, allow_unitless: bool) -> Result<(f32, Option<Unit>), MDError> {
-    match txt.find(|c: char| c.is_alphabetic()) {
-        Some(idx) => {
-            let (quantity, unit) = txt.split_at(idx);
-            Ok((
-                quantity.trim().parse::<f32>()?,
-                Some(Unit::decode(unit.trim())),
-            ))
-        }
-        None => {
-            if allow_unitless {
-                Ok((txt.to_string().parse::<f32>()?, None))
-            } else {
-                Err(MDError::new(
-                    &format!("unitless quantity is not allowed, got '{}'", txt),
-                    None,
-                ))
-            }
-        }
     }
 }
 

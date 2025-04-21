@@ -1,5 +1,7 @@
-use super::md_parser::{expect_children, get_text_from_paragraph, parse_quantity, MDError};
-use super::unit::Unit;
+use std::str::FromStr;
+
+use super::md_parser::{expect_children, get_text_from_paragraph, MDError};
+use super::unit::Quantity;
 use markdown::{self, mdast::Node};
 
 pub struct IngredientList {
@@ -42,8 +44,7 @@ impl IngredientList {
 #[derive(PartialEq, Debug)]
 pub struct Ingredient {
     name: String,
-    quantity: f32,
-    unit: Option<Unit>,
+    quantity: Option<Quantity>,
     attributes: Vec<String>,
 }
 
@@ -57,11 +58,9 @@ impl Ingredient {
             ));
         }
 
-        let (quantity, unit) = parse_quantity(components[1], true)?;
         Ok(Self {
             name: components[0].to_string(),
-            quantity,
-            unit,
+            quantity: Quantity::from_str(components[1]).map_or(None, |q| Some(q)),
             attributes: components[2..].iter().map(|s| s.to_string()).collect(),
         })
     }
@@ -70,49 +69,48 @@ impl Ingredient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::recipe::md_parser::tests::{assert_parse, assert_parse_eq};
+    use crate::recipe::{
+        md_parser::tests::{assert_parse, assert_parse_eq},
+        unit::{Nominal, Unit, Volume},
+    };
     use indoc::indoc;
 
-    fn get_ingredient(
-        name: &str,
-        quantity: f32,
-        unit: Option<Unit>,
-        leftover: &[&str],
-    ) -> Ingredient {
+    fn get_ingredient(name: &str, quantity: Option<(Unit, f32)>, leftover: &[&str]) -> Ingredient {
         Ingredient {
             name: name.to_string(),
-            quantity,
-            unit,
+            quantity: quantity.map(|(unit, amount)| Quantity { unit, amount }),
             attributes: leftover.iter().map(|s| s.to_string()).collect(),
         }
     }
 
     #[test]
     fn parse_ingredient() {
+        let nominal = Unit::Nominal(Nominal);
         assert_parse_eq!(
             Ingredient::from_str("Lemons, 1"),
-            get_ingredient("Lemons", 1., None, &[])
+            get_ingredient("Lemons", Some((nominal, 1.)), &[])
         );
+
+        let ml = Unit::Volume(Volume::Milliliter);
         assert_parse_eq!(
             Ingredient::from_str("Milk, 50 mL"),
-            get_ingredient("Milk", 50., Some(Unit::Milliliter), &[])
+            get_ingredient("Milk", Some((ml.clone(), 50.)), &[])
         );
         assert_parse_eq!(
             Ingredient::from_str("   Milk   ,  50mL  "),
-            get_ingredient("Milk", 50., Some(Unit::Milliliter), &[])
+            get_ingredient("Milk", Some((ml, 50.)), &[])
         );
+
+        let custom = Unit::Custom("bunch".to_string());
         assert_parse_eq!(
             Ingredient::from_str("Basil, 1 bunch"),
-            get_ingredient("Basil", 1., Some(Unit::Custom("bunch".to_string())), &[])
+            get_ingredient("Basil", Some((custom, 1.)), &[])
         );
+
+        let tbsp = Unit::Volume(Volume::Tablespoon);
         assert_parse_eq!(
             Ingredient::from_str("Paprika powder, 1 tbsp, optional, [spicy]"),
-            get_ingredient(
-                "Paprika powder",
-                1.,
-                Some(Unit::Tablespoon),
-                &["optional", "[spicy]"]
-            )
+            get_ingredient("Paprika powder", Some((tbsp, 1.)), &["optional", "[spicy]"])
         );
     }
 

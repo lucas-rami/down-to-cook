@@ -1,6 +1,8 @@
+use std::str::FromStr;
+
 use super::{
-    md_parser::{parse_quantity, MDError},
-    unit::Unit,
+    md_parser::MDError,
+    unit::{QuantityOf, Time},
 };
 use markdown::mdast::{ListItem, Node};
 
@@ -37,7 +39,7 @@ impl Steps {
 pub enum TextElem {
     Text(String),
     IngredientRef(String),
-    Timer(f32, Unit),
+    Timer(QuantityOf<Time>),
 }
 
 impl TextElem {
@@ -58,18 +60,13 @@ impl TextElem {
             Node::Strong(strong) => match strong.children.len() {
                 0 => Ok(Self::IngredientRef(String::new())),
                 1 => match &strong.children[0] {
-                    Node::Text(text) => {
-                        let (quantity, unit) = parse_quantity(&text.value, false)?;
-                        let unit = unit.unwrap();
-                        if unit.is_time() {
-                            Ok(Self::Timer(quantity, unit))
-                        } else {
-                            Err(MDError::new(
-                                &format!("expected time unit but unit is {:?}", unit),
-                                Some(&strong.children[0]),
-                            ))
-                        }
-                    }
+                    Node::Text(text) => match QuantityOf::<Time>::from_str(&text.value[..]) {
+                        Ok(quantity) => Ok(Self::Timer(quantity)),
+                        Err(_) => Err(MDError::new(
+                            &format!("expected time information but got \"{}\"", &text.value),
+                            Some(&strong.children[0]),
+                        )),
+                    },
                     _ => Err(MDError::new(
                         "expected ingrdient ref to be text",
                         Some(&strong.children[0]),
