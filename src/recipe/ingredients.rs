@@ -4,11 +4,11 @@ use super::md_parser::{expect_children, get_text_from_paragraph, MDError, MDResu
 use super::unit::Quantity;
 use markdown::{self, mdast::Node};
 
-pub struct IngredientList {
+pub struct Ingredients {
     ingredients: Vec<Ingredient>,
 }
 
-impl IngredientList {
+impl Ingredients {
     pub fn parse(nodes: &[Node]) -> MDResult<Self> {
         match nodes.len() {
             0 => Ok(Self {
@@ -121,6 +121,6 @@ mod tests {
         - Paprika powder, 1 tbsp, optional
         "};
         let mdast = markdown::to_mdast(content, &markdown::ParseOptions::default()).unwrap();
-        assert_parse!(IngredientList::parse(mdast.children().unwrap()));
+        assert_parse!(Ingredients::parse(mdast.children().unwrap()));
     }
 }

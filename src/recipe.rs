@@ -1,16 +1,16 @@
-mod ingredient;
+mod ingredients;
 mod instructions;
 mod md_parser;
 mod unit;
 
-use ingredient::IngredientList;
+use ingredients::Ingredients;
 use instructions::Instructions;
 use markdown::{self};
 use md_parser::{get_heading, ASTConsumer, MDError};
 
 pub struct Recipe {
     name: String,
-    ingredients: IngredientList,
+    ingredients: Ingredients,
     instructions: Instructions,
 }
 
@@ -22,7 +22,7 @@ impl Recipe {
                 let mut ast_cons = ASTConsumer::new(children);
                 let name = get_heading(ast_cons.consume_next()?, 1, None)?;
                 get_heading(ast_cons.consume_next()?, 2, Some("Ingredients"))?;
-                let ingredients = IngredientList::parse(ast_cons.consume_to_next_heading(2))?;
+                let ingredients = Ingredients::parse(ast_cons.consume_to_next_heading(2))?;
                 get_heading(ast_cons.consume_next()?, 2, Some("Instructions"))?;
                 let instructions = Instructions::parse(ast_cons.consume_to_next_heading(2))?;
                 Ok(Self {
