@@ -4,33 +4,76 @@ use super::{
     md_parser::MDError,
     unit::{QuantityOf, Time},
 };
-use markdown::mdast::{ListItem, Node};
+use markdown::mdast::Node;
 
 #[derive(Clone, PartialEq)]
-pub struct Steps {
+pub struct Instructions {
     steps: Vec<Step>,
 }
 
-impl Steps {
+impl Instructions {
     pub fn from_mdast(nodes: &[Node]) -> Result<Self, MDError> {
         match nodes.len() {
             0 => Ok(Self { steps: vec![] }),
-            1 => match &nodes[0] {
-                Node::List(list) => Ok(Self {
-                    steps: list
-                        .children
-                        .iter()
-                        .map(|n| -> Result<Step, MDError> {
-                            match n {
-                                Node::ListItem(item) => Step::from_list_item(item),
-                                _ => Err(MDError::new("expected list item", Some(&n))),
-                            }
-                        })
-                        .collect::<Result<Vec<Step>, _>>()?,
-                }),
-                _ => Err(MDError::new("steps must be list", Some(&nodes[0]))),
-            },
+            1 => Ok(Self {
+                steps: Step::parse_step_list(&nodes[0])?,
+            }),
             _ => Err(MDError::new("expected single list node for steps", None)),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq)]
+pub struct Step {
+    description: Vec<TextElem>,
+    substeps: Vec<Step>,
+}
+
+impl Step {
+    fn parse_step(node: &Node) -> Result<Self, MDError> {
+        match node {
+            Node::ListItem(item) => match item.children.len() {
+                0 => Ok(Self {
+                    description: vec![],
+                    substeps: vec![],
+                }),
+                1 => Ok(Self {
+                    description: Self::parse_description(&item.children[0])?,
+                    substeps: vec![],
+                }),
+
+                2 => Ok(Self {
+                    description: Self::parse_description(&item.children[0])?,
+                    substeps: Self::parse_step_list(&item.children[1])?,
+                }),
+                _ => Err(MDError::new(
+                    "too many children to list item, expected at most 2",
+                    None,
+                )),
+            },
+            _ => Err(MDError::new("expected list item", Some(node))),
+        }
+    }
+
+    fn parse_description(node: &Node) -> Result<Vec<TextElem>, MDError> {
+        match node {
+            Node::Paragraph(para) => Ok(para
+                .children
+                .iter()
+                .map(|n| TextElem::from_node(n))
+                .collect::<Result<Vec<TextElem>, _>>()?),
+            _ => Err(MDError::new("expected paragraph", Some(node))),
+        }
+    }
+
+    fn parse_step_list(node: &Node) -> Result<Vec<Step>, MDError> {
+        match node {
+            Node::List(list) => Ok(list
+                .children
+                .iter()
+                .map(|n| Step::parse_step(n))
+                .collect::<Result<Vec<Step>, _>>()?),
+            _ => Err(MDError::new("expected list", Some(node))),
         }
     }
 }
@@ -79,37 +122,6 @@ impl TextElem {
     }
 }
 
-#[derive(Clone, PartialEq)]
-pub struct Step {
-    description: Vec<TextElem>,
-    substeps: Steps,
-}
-
-impl Step {
-    fn from_list_item(item: &ListItem) -> Result<Self, MDError> {
-        match item.children.len() {
-            0 => Ok(Self {
-                description: vec![],
-                substeps: Steps::from_mdast(&[])?,
-            }),
-            _ => match &item.children[0] {
-                Node::Paragraph(para) => Ok(Self {
-                    description: Self::parse_description(&para.children)?,
-                    substeps: Steps::from_mdast(&item.children[1..])?,
-                }),
-                _ => Err(MDError::new("expected paragraph", Some(&item.children[0]))),
-            },
-        }
-    }
-
-    fn parse_description(nodes: &[Node]) -> Result<Vec<TextElem>, MDError> {
-        Ok(nodes
-            .iter()
-            .map(|n| TextElem::from_node(n))
-            .collect::<Result<Vec<TextElem>, _>>()?)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -121,8 +133,10 @@ mod tests {
         let content = indoc! {"
         - Top
             - Nested with *emphasis* and **10 minutes**
+            - Nested at the same width
+                - Double-nested
         "};
         let mdast = markdown::to_mdast(content, &markdown::ParseOptions::default()).unwrap();
-        assert_parse!(Steps::from_mdast(mdast.children().unwrap()));
+        assert_parse!(Instructions::from_mdast(mdast.children().unwrap()));
     }
 }

@@ -1,17 +1,17 @@
 mod ingredient;
+mod instructions;
 mod md_parser;
-mod step;
 mod unit;
 
 use ingredient::IngredientList;
+use instructions::Instructions;
 use markdown::{self};
 use md_parser::{get_heading, ASTConsumer, MDError};
-use step::Steps;
 
 pub struct Recipe {
     name: String,
     ingredients: IngredientList,
-    steps: Steps,
+    instructions: Instructions,
 }
 
 impl Recipe {
@@ -23,12 +23,12 @@ impl Recipe {
                 let name = get_heading(ast_cons.consume_next()?, 1, None)?;
                 get_heading(ast_cons.consume_next()?, 2, Some("Ingredients"))?;
                 let ingredients = IngredientList::from_mdast(ast_cons.consume_to_next_heading(2))?;
-                get_heading(ast_cons.consume_next()?, 2, Some("Steps"))?;
-                let steps = Steps::from_mdast(ast_cons.consume_to_next_heading(2))?;
+                get_heading(ast_cons.consume_next()?, 2, Some("Instructions"))?;
+                let steps = Instructions::from_mdast(ast_cons.consume_to_next_heading(2))?;
                 Ok(Self {
                     name,
                     ingredients,
-                    steps,
+                    instructions: steps,
                 })
             }
             None => Err(MDError::new("empty file", None)),
@@ -52,7 +52,7 @@ pub mod tests {
             - Milk, 50 mL
             - Paprika powder, 1 tbsp, optional, [spicy]
 
-            ## Steps
+            ## Instructions
         "};
         assert_parse!(Recipe::from_mdast(content));
     }
