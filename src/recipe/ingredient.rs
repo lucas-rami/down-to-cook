@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use super::md_parser::{expect_children, get_text_from_paragraph, MDError};
+use super::md_parser::{expect_children, get_text_from_paragraph, MDError, MDResult};
 use super::unit::Quantity;
 use markdown::{self, mdast::Node};
 
@@ -9,7 +9,7 @@ pub struct IngredientList {
 }
 
 impl IngredientList {
-    pub fn from_mdast(nodes: &[Node]) -> Result<Self, MDError> {
+    pub fn parse(nodes: &[Node]) -> MDResult<Self> {
         match nodes.len() {
             0 => Ok(Self {
                 ingredients: vec![],
@@ -19,17 +19,8 @@ impl IngredientList {
                     ingredients: list
                         .children
                         .iter()
-                        .map(|n| -> Result<Ingredient, MDError> {
-                            match n {
-                                Node::ListItem(item) => expect_children(&n, 1).and_then(|_| {
-                                    Ingredient::from_str(get_text_from_paragraph(
-                                        &item.children[0],
-                                    )?)
-                                }),
-                                _ => Err(MDError::new("expected list item", Some(&n))),
-                            }
-                        })
-                        .collect::<Result<Vec<Ingredient>, _>>()?,
+                        .map(|n| Ingredient::parse(n))
+                        .collect::<MDResult<Vec<Ingredient>>>()?,
                 }),
                 _ => Err(MDError::new("ingredients must be list", Some(&nodes[0]))),
             },
@@ -49,7 +40,15 @@ pub struct Ingredient {
 }
 
 impl Ingredient {
-    pub fn from_str(text: &str) -> Result<Self, MDError> {
+    fn parse(node: &Node) -> MDResult<Self> {
+        match node {
+            Node::ListItem(item) => expect_children(node, 1)
+                .and_then(|_| Self::from_str(get_text_from_paragraph(&item.children[0])?)),
+            _ => Err(MDError::new("expected list item", Some(node))),
+        }
+    }
+
+    fn from_str(text: &str) -> MDResult<Self> {
         let components: Vec<&str> = text.split(',').map(|s| s.trim()).collect();
         if components.len() < 2 {
             return Err(MDError::new(
@@ -122,6 +121,6 @@ mod tests {
         - Paprika powder, 1 tbsp, optional
         "};
         let mdast = markdown::to_mdast(content, &markdown::ParseOptions::default()).unwrap();
-        assert_parse!(IngredientList::from_mdast(mdast.children().unwrap()));
+        assert_parse!(IngredientList::parse(mdast.children().unwrap()));
     }
 }

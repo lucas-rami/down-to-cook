@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use super::{
-    md_parser::MDError,
+    md_parser::{MDError, MDResult},
     unit::{QuantityOf, Time},
 };
 use markdown::mdast::Node;
@@ -12,7 +12,7 @@ pub struct Instructions {
 }
 
 impl Instructions {
-    pub fn from_mdast(nodes: &[Node]) -> Result<Self, MDError> {
+    pub fn parse(nodes: &[Node]) -> MDResult<Self> {
         match nodes.len() {
             0 => Ok(Self { steps: vec![] }),
             1 => Ok(Self {
@@ -30,7 +30,7 @@ pub struct Step {
 }
 
 impl Step {
-    fn parse_step(node: &Node) -> Result<Self, MDError> {
+    fn parse(node: &Node) -> MDResult<Self> {
         match node {
             Node::ListItem(item) => match item.children.len() {
                 0 => Ok(Self {
@@ -55,24 +55,24 @@ impl Step {
         }
     }
 
-    fn parse_description(node: &Node) -> Result<Vec<TextElem>, MDError> {
+    fn parse_description(node: &Node) -> MDResult<Vec<TextElem>> {
         match node {
             Node::Paragraph(para) => Ok(para
                 .children
                 .iter()
-                .map(|n| TextElem::from_node(n))
-                .collect::<Result<Vec<TextElem>, _>>()?),
+                .map(|n| TextElem::parse(n))
+                .collect::<MDResult<Vec<TextElem>>>()?),
             _ => Err(MDError::new("expected paragraph", Some(node))),
         }
     }
 
-    fn parse_step_list(node: &Node) -> Result<Vec<Step>, MDError> {
+    fn parse_step_list(node: &Node) -> MDResult<Vec<Step>> {
         match node {
             Node::List(list) => Ok(list
                 .children
                 .iter()
-                .map(|n| Step::parse_step(n))
-                .collect::<Result<Vec<Step>, _>>()?),
+                .map(|n| Step::parse(n))
+                .collect::<MDResult<Vec<Step>>>()?),
             _ => Err(MDError::new("expected list", Some(node))),
         }
     }
@@ -86,7 +86,7 @@ pub enum TextElem {
 }
 
 impl TextElem {
-    fn from_node(node: &Node) -> Result<Self, MDError> {
+    fn parse(node: &Node) -> MDResult<Self> {
         match node {
             Node::Text(text) => Ok(Self::Text(text.value.clone())),
             Node::Emphasis(emphasis) => match emphasis.children.len() {
@@ -137,6 +137,6 @@ mod tests {
                 - Double-nested
         "};
         let mdast = markdown::to_mdast(content, &markdown::ParseOptions::default()).unwrap();
-        assert_parse!(Instructions::from_mdast(mdast.children().unwrap()));
+        assert_parse!(Instructions::parse(mdast.children().unwrap()));
     }
 }

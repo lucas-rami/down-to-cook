@@ -22,13 +22,13 @@ impl Recipe {
                 let mut ast_cons = ASTConsumer::new(children);
                 let name = get_heading(ast_cons.consume_next()?, 1, None)?;
                 get_heading(ast_cons.consume_next()?, 2, Some("Ingredients"))?;
-                let ingredients = IngredientList::from_mdast(ast_cons.consume_to_next_heading(2))?;
+                let ingredients = IngredientList::parse(ast_cons.consume_to_next_heading(2))?;
                 get_heading(ast_cons.consume_next()?, 2, Some("Instructions"))?;
-                let steps = Instructions::from_mdast(ast_cons.consume_to_next_heading(2))?;
+                let instructions = Instructions::parse(ast_cons.consume_to_next_heading(2))?;
                 Ok(Self {
                     name,
                     ingredients,
-                    instructions: steps,
+                    instructions,
                 })
             }
             None => Err(MDError::new("empty file", None)),

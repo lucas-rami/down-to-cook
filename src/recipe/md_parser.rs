@@ -26,6 +26,8 @@ impl MDError {
     }
 }
 
+pub type MDResult<T> = Result<T, MDError>;
+
 impl From<message::Message> for MDError {
     fn from(value: message::Message) -> Self {
         let msg = format!("{} ({}:{})", value.reason, value.source, value.rule_id);
@@ -103,18 +105,22 @@ impl<'a> ASTConsumer<'a> {
 }
 
 pub fn expect_children(node: &Node, num: usize) -> Result<(), MDError> {
-    let children = node.children().expect("node cannot have children");
-    if children.len() != num {
-        Err(MDError::new(
-            &format!(
-                "expected node to have {} children, but got {}",
-                num,
-                children.len()
-            ),
-            Some(node),
-        ))
-    } else {
-        Ok(())
+    match &node.children() {
+        Some(children) => {
+            if children.len() != num {
+                Err(MDError::new(
+                    &format!(
+                        "expected node to have {} children, but got {}",
+                        num,
+                        children.len()
+                    ),
+                    Some(node),
+                ))
+            } else {
+                Ok(())
+            }
+        }
+        None => Err(MDError::new("node cannot have children", Some(node))),
     }
 }
 
