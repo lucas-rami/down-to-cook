@@ -1,34 +1,64 @@
 use std::str::FromStr;
 
-use super::md_parser::{expect_children, get_text_from_paragraph, MDError, MDResult};
+use super::md_parser::{expect_children, get_heading, get_text_from_paragraph, MDError, MDResult};
 use super::unit::Quantity;
 use markdown::{self, mdast::Node};
 
-pub struct Ingredients {
-    ingredients: Vec<Ingredient>,
+pub enum Ingredients {
+    IngredientList(Vec<Ingredient>),
+    IngredientGroups(Vec<IngredientGroup>),
 }
 
 impl Ingredients {
     pub fn parse(nodes: &[Node]) -> MDResult<Self> {
         match nodes.len() {
-            0 => Ok(Self {
-                ingredients: vec![],
-            }),
-            1 => match &nodes[0] {
-                Node::List(list) => Ok(Self {
-                    ingredients: list
-                        .children
-                        .iter()
-                        .map(|n| Ingredient::parse(n))
-                        .collect::<MDResult<Vec<Ingredient>>>()?,
-                }),
-                _ => Err(MDError::new("ingredients must be list", Some(&nodes[0]))),
-            },
-            _ => Err(MDError::new(
-                "expected single list node for ingredients",
-                None,
-            )),
+            0 => Ok(Self::IngredientList(vec![])),
+            1 => Ok(Self::IngredientList(Self::parse_ingredient_list(
+                &nodes[0],
+            )?)),
+            _ => {
+                // We expect sequences of the following form:
+                // - heading at depth 3 (defining the ingredient group's name)
+                // - list of ingredients
+                Ok(Self::IngredientGroups(
+                    nodes
+                        .chunks(2)
+                        .map(|group| -> MDResult<IngredientGroup> {
+                            if group.len() == 1 {
+                                Err(MDError::new("malformed ingredient group", Some(&group[0])))
+                            } else {
+                                IngredientGroup::parse(&group[0], &group[1])
+                            }
+                        })
+                        .collect::<MDResult<Vec<IngredientGroup>>>()?,
+                ))
+            }
         }
+    }
+
+    fn parse_ingredient_list(node: &Node) -> MDResult<Vec<Ingredient>> {
+        match node {
+            Node::List(list) => Ok(list
+                .children
+                .iter()
+                .map(|n| Ingredient::parse(n))
+                .collect::<MDResult<Vec<Ingredient>>>()?),
+            _ => Err(MDError::new("ingredients must be list", Some(node))),
+        }
+    }
+}
+
+pub struct IngredientGroup {
+    name: String,
+    ingredients: Vec<Ingredient>,
+}
+
+impl IngredientGroup {
+    fn parse(heading: &Node, list: &Node) -> MDResult<Self> {
+        Ok(Self {
+            name: get_heading(heading, 3, None)?,
+            ingredients: Ingredients::parse_ingredient_list(list)?,
+        })
     }
 }
 
@@ -114,11 +144,28 @@ mod tests {
     }
 
     #[test]
-    fn parse_ingredients_list() {
+    fn parse_ingredient_list() {
         let content = indoc! {"
         - Lemons, 1
         - Milk, 50 mL
         - Paprika powder, 1 tbsp, optional
+        "};
+        let mdast = markdown::to_mdast(content, &markdown::ParseOptions::default()).unwrap();
+        assert_parse!(Ingredients::parse(mdast.children().unwrap()));
+    }
+
+    #[test]
+    fn parse_ingredient_groups() {
+        let content = indoc! {"
+        ### Group 1
+        - Thing 1, 1
+        - Thing 2, 1
+        ### Group 2
+        - Thing 3, 1
+        ### Group 3
+        - Thing 4, 1
+        - Thing 5, 1
+        - Thing 6, 1
         "};
         let mdast = markdown::to_mdast(content, &markdown::ParseOptions::default()).unwrap();
         assert_parse!(Ingredients::parse(mdast.children().unwrap()));

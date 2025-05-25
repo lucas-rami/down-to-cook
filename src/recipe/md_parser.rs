@@ -57,15 +57,15 @@ impl Display for MDError {
 
 pub struct ASTConsumer<'a> {
     idx: usize,
-    nodes: &'a Vec<Node>,
+    nodes: &'a [Node],
 }
 
 impl<'a> ASTConsumer<'a> {
-    pub fn new(nodes: &'a Vec<Node>) -> Self {
+    pub fn new(nodes: &'a [Node]) -> Self {
         ASTConsumer { idx: 0, nodes }
     }
 
-    pub fn consume_next(&mut self) -> Result<&'a Node, MDError> {
+    pub fn next(&mut self) -> Result<&'a Node, MDError> {
         if self.idx == self.nodes.len() {
             Err(MDError::new("EOF", None))
         } else {

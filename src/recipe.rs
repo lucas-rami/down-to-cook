@@ -20,10 +20,10 @@ impl Recipe {
         match md.children() {
             Some(children) => {
                 let mut ast_cons = ASTConsumer::new(children);
-                let name = get_heading(ast_cons.consume_next()?, 1, None)?;
-                get_heading(ast_cons.consume_next()?, 2, Some("Ingredients"))?;
+                let name = get_heading(ast_cons.next()?, 1, None)?;
+                get_heading(ast_cons.next()?, 2, Some("Ingredients"))?;
                 let ingredients = Ingredients::parse(ast_cons.consume_to_next_heading(2))?;
-                get_heading(ast_cons.consume_next()?, 2, Some("Instructions"))?;
+                get_heading(ast_cons.next()?, 2, Some("Instructions"))?;
                 let instructions = Instructions::parse(ast_cons.consume_to_next_heading(2))?;
                 Ok(Self {
                     name,
