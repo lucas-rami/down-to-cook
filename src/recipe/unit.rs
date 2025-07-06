@@ -54,8 +54,8 @@ pub struct Nominal;
 impl FromStr for Nominal {
     type Err = ();
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        if value.is_empty() {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
             Ok(Self)
         } else {
             Err(())
@@ -76,8 +76,8 @@ pub enum Mass {
 impl FromStr for Mass {
     type Err = ();
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match &value.to_lowercase()[..] {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &s.to_lowercase()[..] {
             "g" => Ok(Self::Gram),
             "kg" => Ok(Self::Kilogram),
             "oz" => Ok(Self::Ounce),
@@ -112,8 +112,8 @@ pub enum Volume {
 impl FromStr for Volume {
     type Err = ();
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match &value.to_lowercase()[..] {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &s.to_lowercase()[..] {
             "ml" => Ok(Self::Milliliter),
             "cl" => Ok(Self::Centiliter),
             "l" => Ok(Self::Liter),
@@ -151,8 +151,8 @@ pub enum Distance {
 impl FromStr for Distance {
     type Err = ();
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match &value.to_lowercase()[..] {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &s.to_lowercase()[..] {
             "mm" => Ok(Self::Millimeter),
             "cm" => Ok(Self::Centimeter),
             "in" => Ok(Self::Inches),
@@ -179,8 +179,8 @@ pub enum Temperature {
 impl FromStr for Temperature {
     type Err = ();
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match &value.to_lowercase()[..] {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &s.to_lowercase()[..] {
             "°c" | "c" => Ok(Self::Celsius),
             "°f" | "f" => Ok(Self::Farenheit),
             _ => Err(()),
@@ -207,8 +207,8 @@ pub enum Time {
 impl FromStr for Time {
     type Err = ();
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match &value.to_lowercase()[..] {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &s.to_lowercase()[..] {
             "s" | "sec" | "sec." | "second" | "seconds" => Ok(Self::Second),
             "min" | "min." | "minute" | "minutes" => Ok(Self::Minute),
             "h" | "hour" | "hours" => Ok(Self::Hour),
@@ -232,10 +232,10 @@ pub struct Quantity {
 impl FromStr for Quantity {
     type Err = ParseFloatError;
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value.find(f_split_quantity) {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.find(f_split_quantity) {
             Some(idx) => {
-                let (quantity, unit) = value.split_at(idx);
+                let (quantity, unit) = s.split_at(idx);
                 Ok(Self {
                     unit: Unit::from(unit.trim()),
                     amount: quantity.trim().parse::<f32>()?,
@@ -243,7 +243,7 @@ impl FromStr for Quantity {
             }
             None => Ok(Self {
                 unit: Unit::Nominal(Nominal),
-                amount: value.trim().parse::<f32>()?,
+                amount: s.trim().parse::<f32>()?,
             }),
         }
     }
