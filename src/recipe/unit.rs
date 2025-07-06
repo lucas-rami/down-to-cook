@@ -33,6 +33,40 @@ impl FromStr for Unit {
     }
 }
 
+type FnUnit = fn(f32) -> f32;
+
+impl Unit {
+    pub fn sanitize(self) -> (Self, FnUnit) {
+        match self {
+            Self::Nominal(nominal) => {
+                let (unit, fn_unit) = nominal.sanitize();
+                (Self::Nominal(unit), fn_unit)
+            }
+            Self::Mass(mass) => {
+                let (unit, fn_unit) = mass.sanitize();
+                (Self::Mass(unit), fn_unit)
+            }
+            Self::Volume(volume) => {
+                let (unit, fn_unit) = volume.sanitize();
+                (Self::Volume(unit), fn_unit)
+            }
+            Self::Distance(distance) => {
+                let (unit, fn_unit) = distance.sanitize();
+                (Self::Distance(unit), fn_unit)
+            }
+            Self::Temperature(temperature) => {
+                let (unit, fn_unit) = temperature.sanitize();
+                (Self::Temperature(unit), fn_unit)
+            }
+            Self::Time(time) => {
+                let (unit, fn_unit) = time.sanitize();
+                (Self::Time(unit), fn_unit)
+            }
+            Self::Custom(_) => (self, |q| q * 1.),
+        }
+    }
+}
+
 impl From<&str> for Unit {
     fn from(value: &str) -> Self {
         match Self::from_str(value) {
@@ -43,8 +77,8 @@ impl From<&str> for Unit {
 }
 
 pub trait UnitTrait<'a>: Clone + FromStr<Err = ()> {
-    fn sanitize(&self, quantity: f32) -> (Self, f32) {
-        (self.clone(), quantity)
+    fn sanitize(self) -> (Self, FnUnit) {
+        (self.clone(), |q| q * 1.)
     }
 }
 
@@ -88,11 +122,11 @@ impl FromStr for Mass {
 }
 
 impl UnitTrait<'_> for Mass {
-    fn sanitize(&self, quantity: f32) -> (Self, f32) {
+    fn sanitize(self) -> (Self, FnUnit) {
         match self {
-            Self::Ounce => (Self::Gram, 28. * quantity),
-            Self::Pound => (Self::Gram, 450. * quantity),
-            _ => (*self, quantity),
+            Self::Ounce => (Self::Gram, |q| q * 28.),
+            Self::Pound => (Self::Gram, |q| q * 450.),
+            _ => (self, |q| q * 1.),
         }
     }
 }
@@ -128,15 +162,15 @@ impl FromStr for Volume {
 }
 
 impl UnitTrait<'_> for Volume {
-    fn sanitize(&self, quantity: f32) -> (Self, f32) {
+    fn sanitize(self) -> (Self, FnUnit) {
         match self {
-            Self::Teaspoon => (Self::Milliliter, 5. * quantity),
-            Self::Tablespoon => (Self::Milliliter, 15. * quantity),
-            Self::Cup => (Self::Milliliter, 240. * quantity),
+            Self::Teaspoon => (Self::Milliliter, |q| q * 5.),
+            Self::Tablespoon => (Self::Milliliter, |q| q * 15.),
+            Self::Cup => (Self::Milliliter, |q| q * 240.),
             // Halfway between US and UK conventions; for more precision, use a better unit.
-            Self::FluidOunce => (Self::Milliliter, 29. * quantity),
-            Self::Gallon => (Self::Liter, 3.785 * quantity),
-            _ => (*self, quantity),
+            Self::FluidOunce => (Self::Milliliter, |q| q * 29.),
+            Self::Gallon => (Self::Liter, |q| q * 3.785),
+            _ => (self, |q| q * 1.),
         }
     }
 }
@@ -162,10 +196,10 @@ impl FromStr for Distance {
 }
 
 impl UnitTrait<'_> for Distance {
-    fn sanitize(&self, quantity: f32) -> (Self, f32) {
+    fn sanitize(self) -> (Self, FnUnit) {
         match self {
-            Self::Inches => (Self::Centimeter, 2.5 * quantity),
-            _ => (*self, quantity),
+            Self::Inches => (Self::Centimeter, |q| q * 2.5),
+            _ => (self, |q| q * 1.),
         }
     }
 }
@@ -189,10 +223,10 @@ impl FromStr for Temperature {
 }
 
 impl UnitTrait<'_> for Temperature {
-    fn sanitize(&self, quantity: f32) -> (Self, f32) {
+    fn sanitize(self) -> (Self, FnUnit) {
         match self {
-            Self::Farenheit => (Self::Celsius, (quantity - 32.) * 5. / 9.),
-            _ => (*self, quantity),
+            Self::Farenheit => (Self::Celsius, |f| (f - 32.) * 5. / 9.),
+            _ => (self, |q| q * 1.),
         }
     }
 }
@@ -227,6 +261,16 @@ fn f_split_quantity(c: char) -> bool {
 pub struct Quantity {
     pub unit: Unit,
     pub amount: f32,
+}
+
+impl Quantity {
+    pub fn sanitize(self) -> Self {
+        let (unit, fn_unit) = self.unit.sanitize();
+        Self {
+            unit,
+            amount: fn_unit(self.amount),
+        }
+    }
 }
 
 impl FromStr for Quantity {
@@ -292,6 +336,19 @@ impl error::Error for ParseQuantityOfError {}
 pub struct QuantityOf<T: for<'a> UnitTrait<'a>> {
     pub unit: T,
     pub amount: f32,
+}
+
+impl<T> QuantityOf<T>
+where
+    T: for<'a> UnitTrait<'a>,
+{
+    fn sanitize(self) -> Self {
+        let (unit, fn_unit) = self.unit.sanitize();
+        Self {
+            unit: unit,
+            amount: fn_unit(self.amount),
+        }
+    }
 }
 
 impl<T> FromStr for QuantityOf<T>
@@ -374,6 +431,22 @@ mod tests {
     }
 
     #[test]
+    fn quantity_sanitize() {
+        let q = Quantity {
+            unit: Unit::Distance(Distance::Inches),
+            amount: 3.,
+        }
+        .sanitize();
+        assert_eq!(q.amount, 7.5);
+        let q = Quantity {
+            unit: Unit::Nominal(Nominal),
+            amount: 3.,
+        }
+        .sanitize();
+        assert_eq!(q.amount, 3.);
+    }
+
+    #[test]
     fn parse_quantity_of() {
         assert_quantity_of!(Nominal, "1", Nominal, 1.);
         assert_quantity_of!(Volume, "50 mL", Volume::Milliliter, 50.);
@@ -404,5 +477,21 @@ mod tests {
             QuantityOf::<Mass>::from_str("    1mL  ").unwrap_err(),
             ParseQuantityOfError::InvalidUnit("mL".to_string())
         );
+    }
+
+    #[test]
+    fn quantity_of_sanitize() {
+        let q = QuantityOf::<Distance> {
+            unit: Distance::Inches,
+            amount: 3.,
+        }
+        .sanitize();
+        assert_eq!(q.amount, 7.5);
+        let q = QuantityOf::<Nominal> {
+            unit: Nominal,
+            amount: 3.,
+        }
+        .sanitize();
+        assert_eq!(q.amount, 3.);
     }
 }
