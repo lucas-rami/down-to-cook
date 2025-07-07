@@ -50,7 +50,7 @@ pub mod tests {
 
             - Lemons, 1
             - Milk, 50 mL
-            - Paprika powder, 1 tbsp, optional, [spicy]
+            - Paprika powder, 1 tbsp (optional, spicy)
 
             ## Instructions
         "};

@@ -62,7 +62,7 @@ impl Unit {
                 let (unit, fn_unit) = time.sanitize();
                 (Self::Time(unit), fn_unit)
             }
-            Self::Custom(_) => (self, |q| q * 1.),
+            Self::Custom(_) => (self, |q| q),
         }
     }
 }
@@ -78,7 +78,7 @@ impl From<&str> for Unit {
 
 pub trait UnitTrait<'a>: Clone + FromStr<Err = ()> {
     fn sanitize(self) -> (Self, FnUnit) {
-        (self.clone(), |q| q * 1.)
+        (self.clone(), |q| q)
     }
 }
 
@@ -126,7 +126,7 @@ impl UnitTrait<'_> for Mass {
         match self {
             Self::Ounce => (Self::Gram, |q| q * 28.),
             Self::Pound => (Self::Gram, |q| q * 450.),
-            _ => (self, |q| q * 1.),
+            _ => (self, |q| q),
         }
     }
 }
@@ -170,7 +170,7 @@ impl UnitTrait<'_> for Volume {
             // Halfway between US and UK conventions; for more precision, use a better unit.
             Self::FluidOunce => (Self::Milliliter, |q| q * 29.),
             Self::Gallon => (Self::Liter, |q| q * 3.785),
-            _ => (self, |q| q * 1.),
+            _ => (self, |q| q),
         }
     }
 }
@@ -199,7 +199,7 @@ impl UnitTrait<'_> for Distance {
     fn sanitize(self) -> (Self, FnUnit) {
         match self {
             Self::Inches => (Self::Centimeter, |q| q * 2.5),
-            _ => (self, |q| q * 1.),
+            _ => (self, |q| q),
         }
     }
 }
@@ -226,7 +226,7 @@ impl UnitTrait<'_> for Temperature {
     fn sanitize(self) -> (Self, FnUnit) {
         match self {
             Self::Farenheit => (Self::Celsius, |f| (f - 32.) * 5. / 9.),
-            _ => (self, |q| q * 1.),
+            _ => (self, |q| q),
         }
     }
 }
@@ -264,6 +264,13 @@ pub struct Quantity {
 }
 
 impl Quantity {
+    pub fn new(unit: &Unit, amount: f32) -> Self {
+        Self {
+            unit: unit.clone(),
+            amount,
+        }
+    }
+
     pub fn sanitize(self) -> Self {
         let (unit, fn_unit) = self.unit.sanitize();
         Self {
