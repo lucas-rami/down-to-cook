@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 indoc = "2.0.5"
 markdown = "1.0.0-alpha.22"
+saphyr = "0.0.6"

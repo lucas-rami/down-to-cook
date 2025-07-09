@@ -104,7 +104,7 @@ impl<'a> ASTConsumer<'a> {
     }
 }
 
-pub fn expect_children(node: &Node, num: usize) -> Result<(), MDError> {
+pub fn expect_children(node: &Node, num: usize) -> MDResult<()> {
     match &node.children() {
         Some(children) => {
             if children.len() != num {
@@ -124,7 +124,7 @@ pub fn expect_children(node: &Node, num: usize) -> Result<(), MDError> {
     }
 }
 
-pub fn get_heading(node: &Node, depth: u8, name: Option<&str>) -> Result<String, MDError> {
+pub fn get_heading(node: &Node, depth: u8, name: Option<&str>) -> MDResult<String> {
     // Check that the heading is what we expect.
     if let Node::Heading(heading) = &node {
         // We expect a single Node::Text children at the correct depth.
@@ -168,7 +168,7 @@ pub fn get_heading(node: &Node, depth: u8, name: Option<&str>) -> Result<String,
     }
 }
 
-pub fn get_text_from_paragraph<'a>(node: &'a Node) -> Result<&'a str, MDError> {
+pub fn get_text_from_paragraph<'a>(node: &'a Node) -> MDResult<&'a str> {
     if let Node::Paragraph(para) = &node {
         if let Err(e) = expect_children(node, 1) {
             Err(e)
@@ -183,6 +183,12 @@ pub fn get_text_from_paragraph<'a>(node: &'a Node) -> Result<&'a str, MDError> {
     } else {
         Err(MDError::new("expected paragraph", Some(node)))
     }
+}
+
+pub fn get_parse_options() -> markdown::ParseOptions {
+    let mut options = markdown::ParseOptions::mdx();
+    options.constructs.frontmatter = true;
+    options
 }
 
 pub mod tests {
