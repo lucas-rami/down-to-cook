@@ -60,10 +60,9 @@ impl Recipe {
 pub mod tests {
     use super::*;
     use indoc::indoc;
-    use md_parser::tests::assert_parse;
 
     #[test]
-    fn parse_recipe() {
+    fn parse_recipe() -> MDResult<()> {
         let content = indoc! {"
             # Test recipe
             ## Ingredients
@@ -74,6 +73,7 @@ pub mod tests {
 
             ## Instructions
         "};
-        assert_parse!(Recipe::from_mdast(content));
+        Recipe::from_mdast(content)?;
+        Ok(())
     }
 }

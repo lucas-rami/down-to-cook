@@ -383,15 +383,15 @@ where
 mod tests {
     use super::*;
     use crate::recipe::{
-        md_parser::tests::assert_parse_eq,
+        md_parser::{MDError, MDResult},
         unit::{Nominal, Unit, Volume},
     };
 
     macro_rules! assert_quantity {
         ( $txt:expr, $unit:expr, $amount:expr ) => {
             let s: &str = $txt;
-            assert_parse_eq!(
-                Quantity::from_str(s),
+            assert_eq!(
+                Quantity::from_str(s)?,
                 Quantity {
                     unit: $unit.clone(),
                     amount: $amount,
@@ -404,8 +404,9 @@ mod tests {
         ( $unitty:ty, $txt:expr, $unit:expr, $amount:expr ) => {
             let s: &str = $txt;
             let unit_of_ty: $unitty = $unit;
-            assert_parse_eq!(
-                QuantityOf::<$unitty>::from_str(s),
+            assert_eq!(
+                QuantityOf::<$unitty>::from_str(s)
+                    .map_err(|_| MDError::new("invalid quantity", None))?,
                 QuantityOf::<$unitty> {
                     unit: unit_of_ty.clone(),
                     amount: $amount,
@@ -415,7 +416,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_quantity() {
+    fn parse_quantity() -> MDResult<()> {
         assert_quantity!("1", Unit::Nominal(Nominal), 1.);
         assert_quantity!("10 g", Unit::Mass(Mass::Gram), 10.);
         assert_quantity!("50 mL", Unit::Volume(Volume::Milliliter), 50.);
@@ -425,6 +426,7 @@ mod tests {
         assert_quantity!("180°C", Unit::Temperature(Temperature::Celsius), 180.);
         assert_quantity!("60 sec.", Unit::Time(Time::Second), 60.);
         assert_quantity!("  0.5 bunch    ", Unit::Custom("bunch".to_string()), 0.5);
+        Ok(())
     }
 
     #[test]
@@ -454,12 +456,13 @@ mod tests {
     }
 
     #[test]
-    fn parse_quantity_of() {
+    fn parse_quantity_of() -> MDResult<()> {
         assert_quantity_of!(Nominal, "1", Nominal, 1.);
         assert_quantity_of!(Volume, "50 mL", Volume::Milliliter, 50.);
         assert_quantity_of!(Volume, "50ML", Volume::Milliliter, 50.);
         assert_quantity_of!(Volume, "  50 Ml    ", Volume::Milliliter, 50.);
         assert_quantity_of!(Temperature, "180°C", Temperature::Celsius, 180.);
+        Ok(())
     }
 
     #[test]

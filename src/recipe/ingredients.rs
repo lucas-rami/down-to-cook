@@ -179,10 +179,7 @@ impl IngredientOptions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::recipe::{
-        md_parser::tests::{assert_parse, assert_parse_eq},
-        unit::{Nominal, Unit, Volume},
-    };
+    use crate::recipe::unit::{Nominal, Unit, Volume};
     use indoc::indoc;
 
     // Some quantities
@@ -214,49 +211,49 @@ mod tests {
     }
 
     #[test]
-    fn parse_ingredient() {
+    fn parse_ingredient() -> MDResult<()> {
         // Parsing should ignore spaces around key elements.
         let ingr = simple_ingredient(Some(&FIFTEEN_ML), None);
-        assert_parse_eq!(Ingredient::from_str("name, 15mL"), ingr);
-        assert_parse_eq!(Ingredient::from_str("name, 15 mL"), ingr);
-        assert_parse_eq!(Ingredient::from_str("   name   ,  15mL  "), ingr);
+        assert_eq!(Ingredient::from_str("name, 15mL")?, ingr);
+        assert_eq!(Ingredient::from_str("name, 15 mL")?, ingr);
+        assert_eq!(Ingredient::from_str("   name   ,  15mL  ")?, ingr);
 
         // "Special units": none, nominal, and custom.
         let one_custom = Quantity {
             unit: Unit::Custom("bunch".to_string()),
             amount: 1.,
         };
-        assert_parse_eq!(Ingredient::from_str("name"), simple_ingredient(None, None));
-        assert_parse_eq!(
-            Ingredient::from_str("name, 1"),
+        assert_eq!(Ingredient::from_str("name")?, simple_ingredient(None, None));
+        assert_eq!(
+            Ingredient::from_str("name, 1")?,
             simple_ingredient(Some(&ONE_NOMINAL), None)
         );
-        assert_parse_eq!(
-            Ingredient::from_str("name, 1 bunch"),
+        assert_eq!(
+            Ingredient::from_str("name, 1 bunch")?,
             simple_ingredient(Some(&one_custom), None)
         );
         // Additional information should still be specifiable when there is no unit.
-        assert_parse_eq!(
-            Ingredient::from_str("name (info)"),
+        assert_eq!(
+            Ingredient::from_str("name (info)")?,
             simple_ingredient(None, Some("info"))
         );
 
         // Additional info (parsing should ignore spaces around and inside paranthesises.
         let ingr_with_info = simple_ingredient(Some(&ONE_TBSP), Some("optional, spicy"));
-        assert_parse_eq!(
-            Ingredient::from_str("name, 1 tbsp (optional, spicy)"),
+        assert_eq!(
+            Ingredient::from_str("name, 1 tbsp (optional, spicy)")?,
             ingr_with_info
         );
-        assert_parse_eq!(
-            Ingredient::from_str("name, 1 tbsp(optional, spicy)"),
+        assert_eq!(
+            Ingredient::from_str("name, 1 tbsp(optional, spicy)")?,
             ingr_with_info
         );
-        assert_parse_eq!(
-            Ingredient::from_str("name, 1 tbsp    (optional, spicy)   "),
+        assert_eq!(
+            Ingredient::from_str("name, 1 tbsp    (optional, spicy)   ")?,
             ingr_with_info
         );
-        assert_parse_eq!(
-            Ingredient::from_str("name, 1 tbsp (  optional, spicy )   "),
+        assert_eq!(
+            Ingredient::from_str("name, 1 tbsp (  optional, spicy )   ")?,
             ingr_with_info
         );
 
@@ -267,14 +264,15 @@ mod tests {
             alt_quantities: Some(vec![THREE_TSP, ONE_TBSP]),
             info: None,
         };
-        assert_parse_eq!(
-            Ingredient::from_str("name, 15mL / 3 tsp / 1tbsp"),
+        assert_eq!(
+            Ingredient::from_str("name, 15mL / 3 tsp / 1tbsp")?,
             ingr_with_alts
         );
-        assert_parse_eq!(
-            Ingredient::from_str("name, 15mL  /  3 tsp/1tbsp"),
+        assert_eq!(
+            Ingredient::from_str("name, 15mL  /  3 tsp/1tbsp")?,
             ingr_with_alts
         );
+        Ok(())
     }
 
     #[test]
@@ -297,15 +295,15 @@ mod tests {
     }
 
     #[test]
-    fn parse_ingredient_options() {
+    fn parse_ingredient_options() -> MDResult<()> {
         let ingr = simple_ingredient(Some(&FIFTEEN_ML), Some("info"));
         let alt1 = simple_ingredient(None, Some("info"));
         let alt2 = simple_ingredient(Some(&ONE_NOMINAL), None);
         let alts = vec![alt1, alt2];
 
         // No alternatives.
-        assert_parse_eq!(
-            IngredientOptions::from_str("name, 15ml (info)"),
+        assert_eq!(
+            IngredientOptions::from_str("name, 15ml (info)")?,
             IngredientOptions {
                 ingredient: ingr.clone(),
                 alternatives: None
@@ -313,13 +311,14 @@ mod tests {
         );
 
         // With alternatives (parsing should ignore spaces around bars).
-        assert_parse_eq!(
-            IngredientOptions::from_str("name, 15ml (info)|name (info)    |   name, 1"),
+        assert_eq!(
+            IngredientOptions::from_str("name, 15ml (info)|name (info)    |   name, 1")?,
             IngredientOptions {
                 ingredient: ingr,
                 alternatives: Some(alts.clone())
             }
         );
+        Ok(())
     }
 
     #[test]
@@ -333,18 +332,19 @@ mod tests {
     }
 
     #[test]
-    fn parse_ingredient_list() {
+    fn parse_ingredient_list() -> MDResult<()> {
         let content = indoc! {"
         - Lemons, 1
         - Milk, 50 mL
         - Paprika powder, 1 tbsp (optional)
         "};
         let mdast = markdown::to_mdast(content, &markdown::ParseOptions::default()).unwrap();
-        assert_parse!(Ingredients::parse(mdast.children().unwrap()));
+        Ingredients::parse(mdast.children().unwrap())?;
+        Ok(())
     }
 
     #[test]
-    fn parse_ingredient_groups() {
+    fn parse_ingredient_groups() -> MDResult<()> {
         let content = indoc! {"
         ### Group 1
         - Thing 1, 1
@@ -357,6 +357,7 @@ mod tests {
         - Thing 6, 1
         "};
         let mdast = markdown::to_mdast(content, &markdown::ParseOptions::default()).unwrap();
-        assert_parse!(Ingredients::parse(mdast.children().unwrap()));
+        Ingredients::parse(mdast.children().unwrap())?;
+        Ok(())
     }
 }

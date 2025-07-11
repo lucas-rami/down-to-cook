@@ -190,21 +190,3 @@ pub fn get_parse_options() -> markdown::ParseOptions {
     options.constructs.frontmatter = true;
     options
 }
-
-pub mod tests {
-    macro_rules! assert_parse {
-        ( $res:expr ) => {
-            assert!($res.inspect_err(|e| print!("{}", e)).is_ok());
-        };
-    }
-
-    macro_rules! assert_parse_eq {
-        ( $res:expr, $val:expr ) => {
-            assert!($res.inspect_err(|e| print!("{}", e)).is_ok());
-            assert_eq!($res.unwrap(), $val);
-        };
-    }
-
-    pub(crate) use assert_parse;
-    pub(crate) use assert_parse_eq;
-}

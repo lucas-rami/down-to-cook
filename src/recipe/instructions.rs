@@ -124,12 +124,12 @@ impl TextElem {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::recipe::md_parser::tests::assert_parse;
     use indoc::indoc;
 
+    use crate::recipe::{instructions::Instructions, md_parser::MDResult};
+
     #[test]
-    fn parse_step() {
+    fn parse_step() -> MDResult<()> {
         let content = indoc! {"
         - Top
             - Nested with *emphasis* and **10 minutes**
@@ -137,6 +137,7 @@ mod tests {
                 - Double-nested
         "};
         let mdast = markdown::to_mdast(content, &markdown::ParseOptions::default()).unwrap();
-        assert_parse!(Instructions::parse(mdast.children().unwrap()));
+        Instructions::parse(mdast.children().unwrap())?;
+        Ok(())
     }
 }
